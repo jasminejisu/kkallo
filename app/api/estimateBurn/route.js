@@ -34,31 +34,30 @@ JSON format MUST be exactly like this:
       "calorieBurn": number,
       "duration": number,
       "intensity": text,
-      `
-    }
-  ]
+      `,
+    },
+  ];
 }
 
-  try {
-    const response = await client.chat.completions.create({
-      model: "openai/gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
-      max_tokens: 50,
-    });
+try {
+  const response = await client.chat.completions.create({
+    model: "openai/gpt-4o-mini",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.2,
+    max_tokens: 50,
+  });
 
-    let calories = parseInt(
-      response.choices[0].message.content.replace(/\D/g, ""),
-      10,
-    );
+  let calories = parseInt(
+    response.choices[0].message.content.replace(/\D/g, ""),
+    10,
+  );
 
-    if (isNaN(calories)) calories = Math.round(duration * 5); // fallback
+  if (isNaN(calories)) calories = Math.round(duration * 5); // fallback
 
-    return new Response(JSON.stringify({ estimatedCalories: calories }));
-  } catch (err) {
-    console.error(err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-    });
-  }
+  return new Response(JSON.stringify({ estimatedCalories: calories }));
+} catch (err) {
+  console.error(err);
+  return new Response(JSON.stringify({ error: err.message }), {
+    status: 500,
+  });
 }
