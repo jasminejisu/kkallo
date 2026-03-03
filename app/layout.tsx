@@ -21,7 +21,7 @@ export const metadata = {
     "Kallo is a calorie tracking app that helps you stay on top of your nutrition and achieve your health goals. With Kallo, you can easily log your meals, track your calorie intake, and monitor your progress over time. Whether you're looking to lose weight, maintain a healthy lifestyle, or simply stay informed about your eating habits, Kallo provides the tools you need to succeed. Start your journey towards better health with Kallo today!",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: any) {
   return (
     <html lang="en">
       <body
