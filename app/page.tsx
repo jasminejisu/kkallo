@@ -1,24 +1,18 @@
-"use client";
-
 import Link from "next/link";
-import Header from "./_components/Header";
+import Header from "@/app/_components/Header";
 import Button from "@/app/_components/Button";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/app/_lib/supabase";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/app/_lib/supabase-server";
 
-export default function Page() {
-  const router = useRouter();
+export default async function Page() {
+  const supabase = await supabaseServer();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  useEffect(() => {
-    async function checkAuth() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.user) router.replace("/home");
-    }
-    checkAuth();
-  }, []);
+  if (session?.user) {
+    redirect("/home");
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -32,9 +26,7 @@ export default function Page() {
           <br /> your health goals with Kkallo.
         </h2>
         <Link href="/goal">
-          <Button variant="base" onClick={() => {}}>
-            Start now!
-          </Button>
+          <Button variant="base">Start now!</Button>
         </Link>
       </div>
     </div>

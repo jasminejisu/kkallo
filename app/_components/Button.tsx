@@ -14,12 +14,20 @@ const variants = {
     "px-4 py-2 bg-transparent border-2 border-accent-600 text-accent-600 rounded-full text-lg font-semibold hover:bg-accent-600 hover:text-accent-100 transition-colors shadow-sm duration-300 m-6 shadow-primary-300 cursor-pointer",
 };
 
+type ButtonProps = {
+  children: React.ReactNode;
+  variant?: keyof typeof variants;
+  onClick?: () => void;
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+};
+
 export default function Button({
   children,
   variant = "base",
   onClick,
   type = "button",
-}) {
+}: ButtonProps) {
   return (
     <button type={type} onClick={onClick} className={variants[variant]}>
       {children}

@@ -1,7 +1,8 @@
-import { supabase } from "@/app/_lib/supabase";
+import { createClient } from "@/app/_lib/supabase";
 
 export async function POST(req) {
   try {
+    const supabase = createClient();
     const body = await req.json();
     const { userId, date, summary, calories, protein, carbs, fat } = body;
 

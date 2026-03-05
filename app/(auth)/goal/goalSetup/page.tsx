@@ -1,21 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Button from "../../../_components/Button";
+import Button from "@/app/_components/Button";
 
 export default function Page() {
   const searchParams = useSearchParams();
-  const type = searchParams.get("type"); // "deficit" or "surplus"
-  const [calories, setCalories] = useState(500);
   const router = useRouter();
+  const type = searchParams.get("type");
+  const [calories, setCalories] = useState<number>(1000);
 
-  function HandleDone() {
+  useEffect(
+    function () {
+      if (!type) router.push("/goal");
+    },
+    [type],
+  );
+
+  function handleDone(): void {
     const goalData = {
       goalType: type,
       calorieGoal: calories,
     };
-    localStorage.setItem("tempGoal", JSON.stringify(goalData));
+    sessionStorage.setItem("tempGoal", JSON.stringify(goalData));
     router.push("/signup");
   }
 
@@ -29,7 +36,7 @@ export default function Page() {
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            onClick={() => setCalories((c) => c + 50)}
+            onClick={() => setCalories((c) => c + 10)}
           >
             ▲
           </Button>
@@ -38,7 +45,7 @@ export default function Page() {
             inputMode="numeric"
             pattern="[0-9]*"
             value={calories}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               const val = e.target.value.replace(/\D/g, "");
               setCalories(val === "" ? 0 : Number(val));
             }}
@@ -47,12 +54,12 @@ export default function Page() {
           <span className="text-xl">calories</span>
           <Button
             variant="secondary"
-            onClick={() => setCalories((c) => Math.max(0, c - 50))}
+            onClick={() => setCalories((c) => Math.max(0, c - 10))}
           >
             ▼
           </Button>
         </div>
-        <Button variant="base" onClick={HandleDone}>
+        <Button variant="base" onClick={handleDone}>
           Let&apos;s go!
         </Button>
       </div>

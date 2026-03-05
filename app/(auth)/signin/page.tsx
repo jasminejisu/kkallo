@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/app/_lib/supabase";
+import { createClient } from "@/app/_lib/supabase-client";
 import { useRouter } from "next/navigation";
-import Button from "../../_components/Button";
+import Button from "@/app/_components/Button";
 
 export default function Page() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+  const router = useRouter();
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [emailError, setEmailError] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string>("");
 
   async function handleSignIn() {
+    const supabase = createClient();
     setEmailError("");
     setPasswordError("");
     if (!email) {
@@ -25,10 +27,12 @@ export default function Page() {
     }
 
     setLoading(true);
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
     if (signInError) {
       if (signInError.message.toLowerCase().includes("invalid login")) {
         setEmailError("Email not found. Check your email address.");
@@ -43,12 +47,11 @@ export default function Page() {
       setLoading(false);
       return;
     }
-    await supabase.auth.getSession();
 
-    window.location.href = "/home";
+    router.push("/home");
   }
 
-  function handleKeyDown(e) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") handleSignIn();
   }
 

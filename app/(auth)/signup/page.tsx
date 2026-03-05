@@ -1,28 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/app/_lib/supabase";
 import { useRouter } from "next/navigation";
-import Button from "../../_components/Button";
+import Button from "@/app/_components/Button";
+import { createClient } from "@/app/_lib/supabase-client";
+import { createProfile } from "@/app/_lib/data-services";
+
+type TempGoal = {
+  goalType: string;
+  calorieGoal: number;
+};
 
 export default function Page() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
-  const [tempGoal, setTempGoal] = useState(null);
-  const [username, setUsername] = useState("");
-  const [error, setError] = useState("");
-  const [usernameError, setUsernameError] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [heightError, setHeightError] = useState("");
-  const [weightError, setWeightError] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [height, setHeight] = useState<number>(0);
+  const [weight, setWeight] = useState<number>(0);
+  const [tempGoal, setTempGoal] = useState<TempGoal | null>(null);
+  const [fullName, setFullName] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [fullNameError, setFullNameError] = useState<string>("");
+  const [emailError, setEmailError] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string>("");
+  const [heightError, setHeightError] = useState<string>("");
+  const [weightError, setWeightError] = useState<string>("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string>("");
 
   useEffect(() => {
-    const storedGoal = localStorage.getItem("tempGoal");
+    const storedGoal = sessionStorage.getItem("tempGoal");
     if (!storedGoal) {
       router.push("/goal");
       return;
@@ -30,18 +38,20 @@ export default function Page() {
     setTempGoal(JSON.parse(storedGoal));
   }, []);
 
+  // Validate form field
   async function handleSignUp() {
     setLoading(true);
     setError("");
-    setUsernameError("");
+    setFullNameError("");
     setEmailError("");
     setPasswordError("");
     setHeightError("");
     setWeightError("");
+    setConfirmPasswordError("");
 
     let valid = true;
-    if (!username) {
-      setUsernameError("Username is required.");
+    if (!fullName) {
+      setFullNameError("Name is required.");
       valid = false;
     }
     if (!email) {
@@ -61,15 +71,20 @@ export default function Page() {
     if (!height) {
       setHeightError("Height is required.");
       valid = false;
-    } else if (isNaN(height) || Number(height) <= 0) {
+    } else if (height <= 0) {
       setHeightError("Enter a valid height in cm.");
       valid = false;
     }
     if (!weight) {
       setWeightError("Weight is required.");
       valid = false;
-    } else if (isNaN(weight) || Number(weight) <= 0) {
+    } else if (weight <= 0) {
       setWeightError("Enter a valid weight in kg.");
+      valid = false;
+    }
+
+    if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match.");
       valid = false;
     }
 
@@ -78,6 +93,8 @@ export default function Page() {
       return;
     }
 
+    // Supabase.auth.signUp
+    const supabase = createClient();
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -92,7 +109,7 @@ export default function Page() {
       setLoading(false);
       return;
     }
-
+    //userId is needed to create profile, so we create profile after signUp
     const userId = data.user?.id;
     if (!userId) {
       alert("Check your email to confirm your account, then sign in.");
@@ -100,15 +117,24 @@ export default function Page() {
       return;
     }
 
-    await supabase.from("profiles").upsert({
-      id: userId,
-      goalType: tempGoal.goalType,
-      calorieGoal: tempGoal.calorieGoal,
-      height: Number(height),
-      weight: Number(weight),
-      username: username,
-    });
+    //createProfile()
+    try {
+      await createProfile(
+        supabase,
+        userId,
+        tempGoal?.goalType ?? "",
+        tempGoal?.calorieGoal ?? 0,
+        height,
+        weight,
+        fullName,
+      );
+    } catch {
+      setError("Failed to create profile. Please try again.");
+      setLoading(false);
+      return;
+    }
 
+    //supabase.auth.signInWithPassword to automatically sign in user after sign up
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -120,8 +146,11 @@ export default function Page() {
       return;
     }
 
-    localStorage.removeItem("tempGoal");
-    window.location.href = "/home";
+    //sessionStorage
+    sessionStorage.removeItem("tempGoal");
+    setLoading(false);
+    //router
+    router.push("/home");
   }
 
   return (
@@ -129,18 +158,18 @@ export default function Page() {
       <h1 className="text-3xl mb-4 font-semibold">Sign Up</h1>
       {error && <p className="mb-4 text-red-400 text-sm">{error}</p>}
 
-      <p className="ml-1.5 mb-2 font-semibold">Username</p>
+      <p className="ml-1.5 mb-2 font-semibold">Full name</p>
       <input
         type="text"
-        placeholder="username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        placeholder="full name"
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
         className="border bg-primary-50 text-primary-900 p-2 w-full focus:text-primary-900 focus:bg-primary-50 focus:border-primary-400 focus:outline-none rounded-4xl shadow-sm"
       />
-      {usernameError && (
-        <p className="text-red-400 text-xs ml-1 mb-3 mt-1">{usernameError}</p>
+      {fullNameError && (
+        <p className="text-red-400 text-xs ml-1 mb-3 mt-1">{fullNameError}</p>
       )}
-      {!usernameError && <div className="mb-4" />}
+      {!fullNameError && <div className="mb-4" />}
 
       <p className="ml-1.5 mb-2 font-semibold">Email</p>
       <input
@@ -168,12 +197,27 @@ export default function Page() {
       )}
       {!passwordError && <div className="mb-4" />}
 
+      <p className="ml-1.5 mb-2 font-semibold">Confirm Password</p>
+      <input
+        type="password"
+        placeholder="Password"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        className="border bg-primary-50 text-primary-900 p-2 w-full focus:text-primary-900 focus:bg-primary-50 focus:border-primary-400 focus:outline-none rounded-4xl shadow-sm"
+      />
+      {confirmPasswordError && (
+        <p className="text-red-400 text-xs ml-1 mb-3 mt-1">
+          {confirmPasswordError}
+        </p>
+      )}
+      {!confirmPasswordError && <div className="mb-4" />}
+
       <p className="ml-1.5 mb-2 font-semibold">Height</p>
       <input
         type="number"
         placeholder="cm"
         value={height}
-        onChange={(e) => setHeight(e.target.value)}
+        onChange={(e) => setHeight(Number(e.target.value))}
         className="border bg-primary-50 text-primary-900 p-2 w-full focus:text-primary-900 focus:bg-primary-50 focus:border-primary-400 focus:outline-none rounded-4xl shadow-sm"
       />
       {heightError && (
@@ -186,7 +230,7 @@ export default function Page() {
         type="number"
         placeholder="kg"
         value={weight}
-        onChange={(e) => setWeight(e.target.value)}
+        onChange={(e) => setWeight(Number(e.target.value))}
         className="border bg-primary-50 text-primary-900 p-2 w-full focus:text-primary-900 focus:bg-primary-50 focus:border-primary-400 focus:outline-none rounded-4xl shadow-sm"
       />
       {weightError && (

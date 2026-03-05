@@ -44,8 +44,6 @@ JSON format MUST be exactly like this:
       "carbs": number,
       "fat": number
     }
-  ]
-}
 
 Input:
 ${description ? `Description: ${description}` : "No description provided."}

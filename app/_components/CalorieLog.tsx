@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Button from "@/app/_components/Button";
 
-export default function Navigation() {
+export default function CalorieLog() {
   return (
     <nav className="flex justify-center items-center mb-2 md:mb-8 -mt-5">
       <ul className="flex gap-2 md:gap-10 items-center">

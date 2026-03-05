@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const token = process.env.OPENAI_API_KEY;
 
 export async function POST(req) {
   const { workout, duration, intensity } = await req.json();
@@ -25,39 +25,60 @@ Calculate the estimated calories burned for a user doing this workout:
 Workout: ${workout}
 Duration: ${duration} minutes
 Intensity: ${intensity} (low, medium, high)
-Return ONLY a number (calories), rounded to nearest integer.
+Return ONLY valid JSON, no explanation.
 
 JSON format MUST be exactly like this:
 {
-    "workout": text,
-      "workoutType": text,
-      "calorieBurn": number,
-      "duration": number,
-      "intensity": text,
+  "workout": "workout name",
+  "workoutType": "cardio/strength/flexibility etc",
+  "calorieBurn": number,
+  "duration": number,
+  "intensity": "low/medium/high"
+}
+
+Rules:
+- Always use numeric values for calorieBurn and duration.
+- Round calorieBurn to nearest integer.
+- Do not add any explanation outside the JSON.
       `,
     },
   ];
-}
 
-try {
-  const response = await client.chat.completions.create({
-    model: "openai/gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.2,
-    max_tokens: 50,
-  });
+  try {
+    const response = await client.chat.completions.create({
+      model: "openai/gpt-4o-mini",
+      messages: [{ role: "user", content: userContent }],
+      temperature: 0.2,
+      max_tokens: 50,
+    });
 
-  let calories = parseInt(
-    response.choices[0].message.content.replace(/\D/g, ""),
-    10,
-  );
+    const output = response.choices[0].message.content;
+    const cleaned = output // ✅ same cleaning as analyzeMeal
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
 
-  if (isNaN(calories)) calories = Math.round(duration * 5); // fallback
+    let result;
+    try {
+      result = JSON.parse(cleaned); // ✅ parse JSON like analyzeMeal
+    } catch (jsonErr) {
+      console.error("Failed to parse AI output:", cleaned, jsonErr);
+      return Response.json(
+        { error: "AI returned invalid JSON", raw: cleaned },
+        { status: 500 },
+      );
+    }
 
-  return new Response(JSON.stringify({ estimatedCalories: calories }));
-} catch (err) {
-  console.error(err);
-  return new Response(JSON.stringify({ error: err.message }), {
-    status: 500,
-  });
+    return Response.json({
+      // ✅ return structured data
+      workout: result.workout,
+      workoutType: result.workoutType,
+      calorieBurn: Math.round(result.calorieBurn),
+      duration: result.duration,
+      intensity: result.intensity,
+    });
+  } catch (err) {
+    console.error("estimateBurn error:", err);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
 }

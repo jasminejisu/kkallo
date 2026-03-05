@@ -4,33 +4,46 @@ import { useEffect, useRef, useState } from "react";
 import Button from "@/app/_components/Button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { createClient } from "../_lib/supabase-client";
+import { submitMeal } from "../_lib/data-services";
 
-export default function ImageUpload() {
-  const fileInputRef = useRef(null);
-  const [file, setFile] = useState(null);
-  const [description, setDescription] = useState("");
-  const [result, setResult] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(null);
+type AnalysisResult = {
+  summary: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
 
+export default function IntakeLogger({ userId }: { userId: string }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  const [file, setFile] = useState<File | null>(null);
+  const [description, setDescription] = useState<string>("");
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     return () => {
-      if (file) URL.revokeObjectURL(file);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
-  }, [file]);
+  }, [previewUrl]);
 
   function openFilePicker() {
-    fileInputRef.current.click();
+    if (fileInputRef.current) fileInputRef.current.click();
   }
 
-  function handleFileChange(e) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setPreviewUrl(URL.createObjectURL(selectedFile));
-    }
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
   }
 
   function handleCancel() {
@@ -41,16 +54,13 @@ export default function ImageUpload() {
   }
 
   async function analyze() {
+    setError(null);
     if (!file && !description.trim())
-      return alert("Please provide an image or descrtipion");
+      return setError("Please provide an image or description");
 
     const formData = new FormData();
     if (file) formData.append("file", file);
     formData.append("description", description);
-
-    // --- Add these two for testing ---
-    formData.append("userId", "479a8cb0-df62-45ea-ba24-f6fce65ed397");
-    formData.append("date", new Date().toISOString().split("T")[0]);
 
     try {
       const res = await fetch("/api/analyzeMeal", {
@@ -62,20 +72,21 @@ export default function ImageUpload() {
       if (!res.ok) throw new Error(data.error || "API error");
       setResult(data);
     } catch (err) {
-      console.error(err);
-      alert(`Error analyzing input: ${err.message}`);
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(`Error analyzing input: ${message}`);
     }
   }
 
   async function handleSubmit() {
-    if (!result) return alert("Analyze your meal first");
+    setError(null);
+    if (!result) return setError("Analyze your meal first");
     if (submitting) return;
 
     setSubmitting(true);
     try {
-      const payload = {
-        userId: "479a8cb0-df62-45ea-ba24-f6fce65ed397",
-        date: new Date().toISOString().split("T")[0],
+      const mealData = {
+        userId: userId,
+        eatenDate: new Date().toISOString().split("T")[0],
         summary: result.summary,
         calories: result.calories,
         protein: result.protein,
@@ -83,26 +94,19 @@ export default function ImageUpload() {
         fat: result.fat,
       };
 
-      const res = await fetch("/api/submitMeal", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const supabase = createClient();
+      await submitMeal(supabase, mealData);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to submit");
-
-      alert("Meal submitted successfully!");
+      setSuccess(true);
       // Reset state
       setFile(null);
       setDescription("");
       setResult(null);
       router.push("/home");
+      router.refresh();
     } catch (err) {
-      console.error(err);
-      alert(`Error submitting meal: ${err.message}`);
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(`Error submitting meal: ${message}`);
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +136,7 @@ export default function ImageUpload() {
         {file && (
           <div className="mb-4 relative w-full h-64">
             <Image
-              src={previewUrl}
+              src={previewUrl ?? ""}
               alt="Meal preview"
               fill
               style={{ objectFit: "contain" }}
@@ -177,13 +181,19 @@ export default function ImageUpload() {
             </div>
           </div>
         )}
-
         {!result && (
           <div className="w-full max-w-sm mx-auto flex flex-col items-center">
             <Button variant="accent" onClick={analyze}>
               Analyze
             </Button>
           </div>
+        )}
+
+        {error && <p className="text-red-500 text-center mt-2">{error}</p>}
+        {success && (
+          <p className="text-green-500 text-center mt-2">
+            Meal submitted successfully!
+          </p>
         )}
       </div>
     </div>
