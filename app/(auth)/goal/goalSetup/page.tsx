@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Button from "@/app/_components/Button";
 
-export default function Page() {
+function GoalSetupContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const type = searchParams.get("type");
@@ -64,5 +64,13 @@ export default function Page() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <GoalSetupContent />
+    </Suspense>
   );
 }
