@@ -11,7 +11,7 @@ export async function getGoalType(supabase: SupabaseClient, userId: string) {
     console.error(error);
     throw new Error(`Goal type could not be loaded for user ${userId}`);
   }
-  return data;
+  return data?.goalType;
 }
 
 export async function getWeeklyCalories(

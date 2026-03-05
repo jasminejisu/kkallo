@@ -1,14 +1,17 @@
 import CalendarBlock from "@/app/_components/CalendarBlock";
 import Button from "@/app/_components/Button";
-import { supabaseServer } from "@/app/_lib/supabase-client";
+import { supabaseServer } from "@/app/_lib/supabase-server";
 import { getGoalType } from "@/app/_lib/data-services";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function Page() {
   const supabase = await supabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user) redirect("/signin");
 
   const goalType = await getGoalType(supabase, user.id);
 
